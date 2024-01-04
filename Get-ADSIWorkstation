@@ -1,0 +1,38 @@
+<#
+Simple Example of adsisearcher computer search. I will try to post more examples, I have quite a few. I did get a little hasty putting this one together.
+
+#>
+
+Function Get-ADSIWorkstation($Computer){
+$memberOfRegEx = '^CN=([^,]+).+$','$1'
+$searchFilter = "(&(objectCategory=computer)name=$($Computer))"
+$directoryEntry = New-Object System.DirectoryServices.DirectoryEntry "LDAP://$Domain/$DN", 'UserName', 'Password'
+$adsiSearcher = New-Object System.DirectoryServices.DirectorySearcher
+$adsiSearcher.SearchRoot = $directoryEntry
+$adsiSearcher.PageSize = 9999
+$adsiSearcher.Filter = $searchFilter
+$adsiSearcher.SearchScope = "Subtree"
+
+$adsiSearcher.FindOne() | ForEach-Object {
+    [PSCustomObject]@{
+    name = $_.properties['name'][0]
+    Enabled = [bool](($_.properties['UserAccountControl'][0] -BAND 2) -eq 0) # For user account, enabled?
+    dnshostname = $_.properties['dnshostname'][0]
+    objectsid = $_.properties['objectsid'].ForEach({[System.Security.Principal.SecurityIdentifier]::new($_, 0).Value})
+    memberof = $($_.properties['memberof'] | Sort-Object) -Replace $memberOfRegEx -Join "; "
+    distinguishedname = $_.properties['distinguishedname'][0]
+    operatingsystem = $_.properties['operatingsystem'][0]
+    operatingsystemversion = $_.properties['operatingsystemversion'][0]
+    lastlogontimestamp = [datetime]::FromFileTime($_.properties['lastlogontimestamp'][0])
+    logoncount = $_.properties['logoncount'][0]
+    pwdlastset = if($_.properties['pwdlastset'][0] -match '/1600'){"0"}else{[datetime]::FromFileTime($_.properties['pwdlastset'][0])}
+    whencreated = $_.properties['whencreated'][0]
+    adspath = $_.properties['adspath'][0]
+    useraccountcontrol = $_.properties['useraccountcontrol'][0]
+    cn = $_.properties['cn'][0]
+    whenchanged = $_.properties['whenchanged'][0]
+    lastlogon = [datetime]::FromFileTime($_.properties['lastlogon'][0])
+    displayname = $_.properties['displayname'][0]
+    }
+}
+}
